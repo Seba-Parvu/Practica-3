@@ -1,0 +1,85 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "ProjectesSMX";
+const char* password = "Hola1234";
+
+const int pinLDR = 35;
+const int pinLM35 = 34;
+const int LED = 27;
+
+WebServer server(80);
+
+void pagina() {
+  int ldr = analogRead(pinLDR);
+  float tempC = (analogRead(pinLM35) * 3.3 / 4095.0) * 100.0;
+
+  String colorTemp = "#28a745";
+  String estadoTemp = "NORMAL";
+
+  if (tempC >= 15.0) {
+    colorTemp = "#dc3545";
+    estadoTemp = "PELIGRO";
+  }
+
+  String colorLDR = "#28a745";
+  String estadoLDR = "NORMAL";
+
+  if (ldr < 3000) {
+    colorLDR = "#dc3545";
+    estadoLDR = "PELIGRO";
+  }
+
+  if (tempC >= 15.0 || ldr < 3000) {
+    digitalWrite(LED, HIGH);
+  } else {
+    digitalWrite(LED, LOW);
+  }
+
+  String html = "<html><head><meta charset='UTF-8'>";
+  html += "<meta http-equiv='refresh' content='5'>";
+  html += "<style>body{font-family:sans-serif;text-align:center;}.card{padding:20px;color:white;display:inline-block;margin:10px;border-radius:10px;}</style>";
+  html += "</head><body>";
+
+  html += "<h1>Monitor CPD</h1>";
+
+  html += "<div class='card' style='background:" + colorTemp + ";'>";
+  html += "<h3>Temperatura</h3>";
+  html += "<p>" + String(tempC, 1) + " °C</p>";
+  html += "<p>" + estadoTemp + "</p>";
+  html += "</div>";
+
+  html += "<div class='card' style='background:" + colorLDR + ";'>";
+  html += "<h3>LDR</h3>";
+  html += "<p>" + String(ldr) + "</p>";
+  html += "<p>" + estadoLDR + "</p>";
+  html += "</div>";
+
+  html += "</body></html>";
+
+  server.send(200, "text/html", html);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(LED, OUTPUT);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connectant...");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnectat!");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", pagina);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
